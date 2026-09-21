@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Video List</title>
+  <style>
+    body {
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: Arial, sans-serif;
+      padding: 24px;
+    }
+    h1 {
+      margin-bottom: 16px;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    a {
+      color: #7dd3fc;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    button {
+      margin-top: 8px;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+    }
+    video {
+      width: 100%;
+      max-width: 640px;
+      margin-top: 10px;
+      display: block;
+      background: #000;
+    }
+    .status {
+      color: #cbd5e1;
+      margin-bottom: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>MP4 Files</h1>
+  <div id="status" class="status">Loading videos...</div>
+  <ul id="video-list"></ul>
+
+  <script>
+    // Default list if the server does not provide JSON.
+    const defaultVideos = ["ssu.mp4", "gns.mp4"];
+
+    async function loadVideos() {
+      const listEl = document.getElementById("video-list");
+      const statusEl = document.getElementById("status");
+
+      try {
+        const res = await fetch("/api/videos", {
+          headers: { Accept: "application/json" }
+        });
+
+        let videos = defaultVideos;
+
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            videos = data;
+          }
+        }
+
+        listEl.innerHTML = "";
+
+        videos.forEach((file) => {
+          const li = document.createElement("li");
+
+          const name = document.createElement("div");
+          name.textContent = file;
+
+          const link = document.createElement("a");
+          link.href = `/api/videos/${encodeURIComponent(file)}`;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = "Open video";
+
+          const button = document.createElement("button");
+          button.textContent = "Send interaction request";
+          button.addEventListener("click", async () => {
+            try {
+              const postRes = await fetch("/api/videos/interact", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  file: file,
+                  action: "selected"
+                })
+              });
+
+              const text = await postRes.text();
+              alert("Interaction response: " + text);
+            } catch (err) {
+              alert("Error sending interaction request: " + err.message);
+            }
+          });
+
+          const video = document.createElement("video");
+          video.controls = true;
+          video.preload = "metadata";
+          video.src = `/api/videos/${encodeURIComponent(file)}`;
+
+          li.appendChild(name);
+          li.appendChild(link);
+          li.appendChild(button);
+          li.appendChild(video);
+          listEl.appendChild(li);
+        });
+
+        statusEl.textContent = `${videos.length} video(s) loaded.`;
+      } catch (err) {
+        statusEl.textContent = "Could not load video list.";
+        console.error(err);
+      }
+    }
+
+    loadVideos();
+  </script>
+</body>
+</html>
